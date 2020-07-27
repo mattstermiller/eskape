@@ -31,6 +31,8 @@ type UnionFindNode() =
                     root1.Rank <- root1.Rank + 1
             true
 
+type Direction = Up | Down | Left | Right
+
 type MazeConfig = {
     Width: int
     Height: int
@@ -44,30 +46,59 @@ with
         wall < this.Width || wall >= this.RowWalls*this.Height ||
         wall % this.RowWalls = this.Width || wall % this.RowWalls = this.RowWalls - 1
 
-    /// Returns the room indexes separated by the given wall index 
+    /// Returns the room indexes next to the given wall index 
     member this.Rooms wall =
-        if this.IsOuterWall wall then
-            None
+        let i = wall % this.RowWalls
+        let row = wall / this.RowWalls
+        if i < this.Width then
+            // north/south
+            let room = wall - (this.Width+1)*row - this.Width
+            [
+                if row > 0 then
+                    room
+                if row < this.Height then
+                    room+this.Width
+            ]
         else
-            let i = wall % this.RowWalls
-            let row = wall / this.RowWalls
-            if i < this.Width then
-                // north/south
-                let room = wall - (this.Width+1)*row - this.Width
-                Some (room, room+this.Width)
-            else
-                // east/west
-                let room = wall - (this.Width+1)*(row+1)
-                Some (room, room+1)
+            // east/west
+            let room = wall - (this.Width+1)*(row+1)
+            [
+                if i > this.Width then
+                    room
+                if i < this.RowWalls - 1 then
+                    room+1
+            ]
 
-let render (maze: MazeConfig) walls =
+    /// Returns a new room index given the walls, a movement direction, and a current room index.
+    /// Returns the same room when the given movement is not valid.
+    member this.Move (walls: bool array) dir room =
+        let row = room / this.Width
+        let i = room % this.Width
+        let offset =
+            match dir with
+            | Up -> 0
+            | Down -> this.RowWalls
+            | Left -> this.Width
+            | Right -> this.Width + 1
+        let wall = walls.[row*this.RowWalls + i + offset]
+        let move =
+            if wall || dir = Left && i = 0 then 0
+            else
+                match dir with
+                | Right -> 1
+                | Left -> -1
+                | Down -> this.Width
+                | Up -> -this.Width
+        room + move
+
+let render (maze: MazeConfig) walls player =
     walls
     |> Array.mapi (fun i isWall ->
         let wall = '█'
         let cell = if isWall then wall else ' '
-        let i = i % maze.RowWalls
-        let isVertical = i < maze.Width
-        let isEol = i = maze.Width - 1 || i = maze.RowWalls - 1
+        let rowI = i % maze.RowWalls
+        let isVertical = rowI < maze.Width
+        let isEol = rowI = maze.Width - 1 || rowI = maze.RowWalls - 1
         [|
             if isVertical then
                 wall
@@ -80,7 +111,8 @@ let render (maze: MazeConfig) walls =
                 if isEol then
                     '\n'
                 else
-                    ' '
+                    let room = maze.Rooms i |> List.last
+                    if room = player then '*' else ' '
         |]
     )
     |> Array.collect id
@@ -95,21 +127,53 @@ let main args =
     let walls = Array.init maze.TotalWalls (fun _ -> true)
     let wallsToRemove = [|0..maze.TotalWalls-1|] |> Array.filter (not << maze.IsOuterWall) |> shuffle
     let rooms = Array.init (maze.Width*maze.Height) (fun _ -> UnionFindNode())
-    let render () =
-        Console.SetCursorPosition(0, 0)
-        render maze walls |> Console.Write
-        System.Threading.Thread.Sleep(10)
     // remove inner walls
     for i in wallsToRemove do
         match maze.Rooms i with
-        | Some (a, b) ->
+        | [a; b] ->
             if rooms.[a].Union(rooms.[b]) then
                 walls.[i] <- false
-                render ()
-        | None -> failwith "Tried to remove outer wall"
+        | _ -> failwith "Tried to remove outer wall"
     // remove outer E/W walls
-    walls.[maze.Width + rand.Next(maze.Height)*maze.RowWalls] <- false
-    walls.[maze.Width*2 + rand.Next(maze.Height)*maze.RowWalls] <- false
+    let startWall = maze.Width + rand.Next(maze.Height)*maze.RowWalls
+    let finishWall = maze.Width*2 + rand.Next(maze.Height)*maze.RowWalls
+    walls.[startWall] <- false
+    walls.[finishWall] <- false
+    let start = maze.Rooms startWall |> List.exactlyOne
+    let finish = maze.Rooms finishWall |> List.exactlyOne
+    let mutable player = start
+    let mutable won = false
+
+    let eraseCursor () =
+        Console.CursorLeft <- Console.CursorLeft - 1
+        Console.Write " "
+        Console.CursorLeft <- Console.CursorLeft - 1
+    let render () =
+        Console.SetCursorPosition(0, 0)
+        render maze walls player |> Console.Write
+        let quitMsg = "Press [Escape] to quit."
+        Console.Write (String(' ', 80))
+        Console.CursorLeft <- 0
+        Console.Write (
+            if won then "You Won!!!  " + quitMsg
+            else "Use the arrow keys or H J K L to move to the exit.  " + quitMsg
+        )
+    let move dir =
+        player <- maze.Move walls dir player
+        if player = finish then
+            won <- true
+        render ()
+
+    Console.CursorVisible <- false
     render ()
-    Console.ReadKey() |> ignore
+    let mutable run = true
+    while run do
+        match Console.ReadKey().Key with
+        | ConsoleKey.Escape -> run <- false
+        | _ when won -> eraseCursor ()
+        | ConsoleKey.LeftArrow | ConsoleKey.H -> move Left
+        | ConsoleKey.DownArrow | ConsoleKey.J -> move Down
+        | ConsoleKey.UpArrow | ConsoleKey.K -> move Up
+        | ConsoleKey.RightArrow | ConsoleKey.L -> move Right
+        | _ -> eraseCursor ()
     0
