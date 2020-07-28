@@ -143,7 +143,8 @@ let render game =
 
 [<EntryPoint>]
 let main args =
-    let mutable game = newGame 40 14
+    let w, h = 40, 14
+    let mutable game = newGame w h
 
     let eraseCursor () =
         Console.CursorLeft <- Console.CursorLeft - 1
@@ -156,12 +157,15 @@ let main args =
         Console.Write (String(' ', 80))
         Console.CursorLeft <- 0
         Console.Write (
-            if game.Won then "You Won!!!  " + quitMsg
+            if game.Won then "You Won!!!  Press N to start a new game.  " + quitMsg
             else "Use the arrow keys or H J K L to move to the exit.  " + quitMsg
         )
     let move dir =
         game <- move game dir
         render ()
+    let newGame () =
+        game <- newGame w h
+        render()
 
     Console.CursorVisible <- false
     render ()
@@ -169,6 +173,7 @@ let main args =
     while run do
         match Console.ReadKey().Key with
         | ConsoleKey.Escape -> run <- false
+        | ConsoleKey.N when game.Won -> newGame ()
         | _ when game.Won -> eraseCursor ()
         | ConsoleKey.LeftArrow | ConsoleKey.H -> move Left
         | ConsoleKey.DownArrow | ConsoleKey.J -> move Down
