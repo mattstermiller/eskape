@@ -11,6 +11,15 @@ let shuffle items =
         arr.[i] <- swap
     arr
 
+module Seq =
+    let collecti f =
+        let mutable i = 0
+        Seq.collect (fun a ->
+            let b = f i a
+            i <- i + 1
+            b
+        )
+
 type UnionFindNode() =
     member val private Parent: UnionFindNode option = None with get, set
     member val private Rank = 0 with get, set
@@ -33,116 +42,108 @@ type UnionFindNode() =
 
 type Direction = Up | Down | Left | Right
 
-type MazeConfig = {
+type Room = {
+    // Whether this room has a wall to the North (Up)
+    N: bool
+    // Whether this room has a wall to the West (Left)
+    W: bool
+}
+
+type RoomWall = N | W
+
+type Game = {
     Width: int
     Height: int
+    Rooms: Room array
+    Start: int
+    Finish: int
+    Player: int
 }
 with
-    member this.RowWalls = this.Width*2 + 1
-    member this.TotalWalls = this.RowWalls*this.Height + this.Width
+    member this.Won = this.Player = this.Finish
 
-    /// Returns whether the given wall index is an outer wall
-    member this.IsOuterWall wall =
-        wall < this.Width || wall >= this.RowWalls*this.Height ||
-        wall % this.RowWalls = this.Width || wall % this.RowWalls = this.RowWalls - 1
-
-    /// Returns the room indexes next to the given wall index 
-    member this.Rooms wall =
-        let i = wall % this.RowWalls
-        let row = wall / this.RowWalls
-        if i < this.Width then
-            // north/south
-            let room = wall - (this.Width+1)*row - this.Width
-            [
-                if row > 0 then
-                    room
-                if row < this.Height then
-                    room+this.Width
-            ]
-        else
-            // east/west
-            let room = wall - (this.Width+1)*(row+1)
-            [
-                if i > this.Width then
-                    room
-                if i < this.RowWalls - 1 then
-                    room+1
-            ]
-
-    /// Returns a new room index given the walls, a movement direction, and a current room index.
-    /// Returns the same room when the given movement is not valid.
-    member this.Move (walls: bool array) dir room =
-        let row = room / this.Width
-        let i = room % this.Width
-        let offset =
-            match dir with
-            | Up -> 0
-            | Down -> this.RowWalls
-            | Left -> this.Width
-            | Right -> this.Width + 1
-        let wall = walls.[row*this.RowWalls + i + offset]
-        let move =
-            if wall || dir = Left && i = 0 then 0
-            else
-                match dir with
-                | Right -> 1
-                | Left -> -1
-                | Down -> this.Width
-                | Up -> -this.Width
-        room + move
-
-let render (maze: MazeConfig) walls player =
-    walls
-    |> Array.mapi (fun i isWall ->
-        let wall = '█'
-        let cell = if isWall then wall else ' '
-        let rowI = i % maze.RowWalls
-        let isVertical = rowI < maze.Width
-        let isEol = rowI = maze.Width - 1 || rowI = maze.RowWalls - 1
+let newGame width height =
+    let rooms = Array.init (width*height) (fun _ -> { N = true; W = true })
+    let wallsToRemove =
         [|
-            if isVertical then
-                wall
-                cell
-                if isEol then
-                    wall
-                    '\n'
-            else
-                cell
-                if isEol then
-                    '\n'
-                else
-                    let room = maze.Rooms i |> List.last
-                    if room = player then '*' else ' '
+            for room in Seq.init (width*height) id do
+                if room >= width then
+                    (room, N)
+                if room % width > 0 then
+                    (room, W)
         |]
-    )
-    |> Array.collect id
-    |> String |> string
+    let roomNodes = Array.init (width*height) (fun _ -> UnionFindNode())
+    for (room, wall) in shuffle wallsToRemove do
+        let otherRoom =
+            match wall with
+            | N -> room - width
+            | W -> room - 1
+        if roomNodes.[room].Union(roomNodes.[otherRoom]) then
+            rooms.[room] <-
+                match wall with
+                | N -> { rooms.[room] with N = false }
+                | W -> { rooms.[room] with W = false }
+    let start = rand.Next(height)*width
+    let finish = rand.Next(height)*width + width - 1
+    {
+        Width = width
+        Height = height
+        Rooms = rooms
+        Start = start
+        Finish = finish
+        Player = start
+    }
+
+let move game dir =
+    let row = game.Player / game.Width
+    let col = game.Player % game.Width
+    match dir with
+    | Up ->
+        if row > 0 && not game.Rooms.[game.Player].N then
+            { game with Player = game.Player - game.Width }
+        else game
+    | Down ->
+        if row < game.Height-1 && not game.Rooms.[game.Player+game.Width].N then
+            { game with Player = game.Player + game.Width }
+        else game
+    | Left ->
+        if col > 0 && not game.Rooms.[game.Player].W then
+            { game with Player = game.Player - 1 }
+        else game
+    | Right ->
+        if col < game.Width-1 && not game.Rooms.[game.Player+1].W then
+            { game with Player = game.Player + 1 }
+        else game
+
+let render game =
+    let wall = '█'
+    let playerChar = '*'
+    let space = ' '
+    let toWall b = if b then wall else space
+    let line roomRow f = roomRow |> Seq.collecti f |> Seq.toArray |> String
+    game.Rooms
+    |> Array.chunkBySize game.Width
+    |> Seq.collecti (fun row roomRow -> [
+        line roomRow (fun col room -> [
+            wall
+            toWall room.N
+            if col = game.Width-1 then wall
+        ])
+        line roomRow (fun col room ->
+            let roomI = row*game.Width + col
+            [
+                if roomI = game.Start then space else toWall room.W
+                if roomI = game.Player then playerChar else space
+                if col = game.Width-1 then toWall (roomI <> game.Finish)
+            ]
+        )
+        if row = game.Height - 1 then
+            String(wall, game.Width*2 + 1)
+    ])
 
 [<EntryPoint>]
 let main args =
-    let maze = {
-        Width = 40
-        Height = 14
-    }
-    let walls = Array.init maze.TotalWalls (fun _ -> true)
-    let wallsToRemove = [|0..maze.TotalWalls-1|] |> Array.filter (not << maze.IsOuterWall) |> shuffle
-    let rooms = Array.init (maze.Width*maze.Height) (fun _ -> UnionFindNode())
-    // remove inner walls
-    for i in wallsToRemove do
-        match maze.Rooms i with
-        | [a; b] ->
-            if rooms.[a].Union(rooms.[b]) then
-                walls.[i] <- false
-        | _ -> failwith "Tried to remove outer wall"
-    // remove outer E/W walls
-    let startWall = maze.Width + rand.Next(maze.Height)*maze.RowWalls
-    let finishWall = maze.Width*2 + rand.Next(maze.Height)*maze.RowWalls
-    walls.[startWall] <- false
-    walls.[finishWall] <- false
-    let start = maze.Rooms startWall |> List.exactlyOne
-    let finish = maze.Rooms finishWall |> List.exactlyOne
-    let mutable player = start
-    let mutable won = false
+    let mutable game = newGame 40 14
 
     let eraseCursor () =
         Console.CursorLeft <- Console.CursorLeft - 1
@@ -150,18 +151,16 @@ let main args =
         Console.CursorLeft <- Console.CursorLeft - 1
     let render () =
         Console.SetCursorPosition(0, 0)
-        render maze walls player |> Console.Write
+        render game |> Seq.iter Console.WriteLine
         let quitMsg = "Press [Escape] to quit."
         Console.Write (String(' ', 80))
         Console.CursorLeft <- 0
         Console.Write (
-            if won then "You Won!!!  " + quitMsg
+            if game.Won then "You Won!!!  " + quitMsg
             else "Use the arrow keys or H J K L to move to the exit.  " + quitMsg
         )
     let move dir =
-        player <- maze.Move walls dir player
-        if player = finish then
-            won <- true
+        game <- move game dir
         render ()
 
     Console.CursorVisible <- false
@@ -170,7 +169,7 @@ let main args =
     while run do
         match Console.ReadKey().Key with
         | ConsoleKey.Escape -> run <- false
-        | _ when won -> eraseCursor ()
+        | _ when game.Won -> eraseCursor ()
         | ConsoleKey.LeftArrow | ConsoleKey.H -> move Left
         | ConsoleKey.DownArrow | ConsoleKey.J -> move Down
         | ConsoleKey.UpArrow | ConsoleKey.K -> move Up
