@@ -61,6 +61,8 @@ type Game = {
 }
 with
     member this.Won = this.Player = this.Finish
+    member this.ScreenWidth = this.Width*2 + 1
+    member this.ScreenHeight = this.Height*2 + 2
 
 let newGame width height =
     let rooms = Array.init (width*height) (fun _ -> { N = true; W = true })
@@ -121,63 +123,72 @@ let render game =
     let space = ' '
     let toWall b = if b then wall else space
     let line roomRow f = roomRow |> Seq.collecti f |> Seq.toArray |> String
-    game.Rooms
-    |> Array.chunkBySize game.Width
-    |> Seq.collecti (fun row roomRow -> [
-        line roomRow (fun col room -> [
-            wall
-            toWall room.N
-            if col = game.Width-1 then wall
-        ])
-        line roomRow (fun col room ->
-            let roomI = row*game.Width + col
-            [
-                if roomI = game.Start then space else toWall room.W
-                if roomI = game.Player then playerChar else space
-                if col = game.Width-1 then toWall (roomI <> game.Finish)
-            ]
-        )
-        if row = game.Height - 1 then
-            String(wall, game.Width*2 + 1)
-    ])
+    let maze =
+        game.Rooms
+        |> Array.chunkBySize game.Width
+        |> Seq.collecti (fun row roomRow -> [
+            line roomRow (fun col room -> [
+                wall
+                toWall room.N
+                if col = game.Width-1 then wall
+            ])
+            line roomRow (fun col room ->
+                let roomI = row*game.Width + col
+                [
+                    if roomI = game.Start then space else toWall room.W
+                    if roomI = game.Player then playerChar else space
+                    if col = game.Width-1 then toWall (roomI <> game.Finish)
+                ]
+            )
+            if row = game.Height - 1 then
+                String(wall, game.Width*2 + 1)
+            ])
+    let msg =
+        String.concat "  " [
+            "  Eskape!"
+            if game.Won then
+                "You Won!!!" 
+                "Press N to start a new game."
+            else
+                "Use the arrow keys or H J K L to move."
+            "Press [Escape] to quit."
+        ] |> fun s -> s.PadRight (game.ScreenWidth)
+    Seq.append [msg] maze
 
 [<EntryPoint>]
 let main args =
-    let w, h = 40, 14
+    Console.Title <- "Eskape"
+    Console.CursorVisible <- false
+    let w, h = 40, 20
     let mutable game = newGame w h
+    Console.SetWindowSize(game.ScreenWidth+1, game.ScreenHeight)
 
     let eraseCursor () =
-        Console.CursorLeft <- Console.CursorLeft - 1
+        Console.CursorLeft <- max 0 (Console.CursorLeft - 1)
         Console.Write " "
         Console.CursorLeft <- Console.CursorLeft - 1
-    let render () =
-        Console.SetCursorPosition(0, 0)
+    let updateScreen () =
         render game |> Seq.iter Console.WriteLine
-        let quitMsg = "Press [Escape] to quit."
-        Console.Write (String(' ', 80))
-        Console.CursorLeft <- 0
-        Console.Write (
-            if game.Won then "You Won!!!  Press N to start a new game.  " + quitMsg
-            else "Use the arrow keys or H J K L to move to the exit.  " + quitMsg
-        )
+        Console.SetCursorPosition(0, 0)
     let move dir =
         game <- move game dir
-        render ()
+        updateScreen ()
     let newGame () =
         game <- newGame w h
-        render()
+        updateScreen()
 
-    Console.CursorVisible <- false
-    render ()
+    updateScreen ()
     let mutable run = true
     while run do
-        match Console.ReadKey().Key with
+        let key = Console.ReadKey().Key
+        eraseCursor ()
+        match key with
         | ConsoleKey.Escape -> run <- false
         | ConsoleKey.N when game.Won -> newGame ()
-        | _ when game.Won -> eraseCursor ()
+        | _ when game.Won -> ()
         | ConsoleKey.LeftArrow | ConsoleKey.H -> move Left
         | ConsoleKey.DownArrow | ConsoleKey.J -> move Down
         | ConsoleKey.UpArrow | ConsoleKey.K -> move Up
         | ConsoleKey.RightArrow | ConsoleKey.L -> move Right
-        | _ -> eraseCursor ()
+        | _ -> ()
     0
