@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Prelude.fs" />
+    <Compile Include="Model.fs" />
+    <Compile Include="Game.fs" />
+    <Compile Include="Menu.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
