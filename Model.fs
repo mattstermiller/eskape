@@ -3,19 +3,22 @@ module Model
 
 type Visibility =
     | Full
+    | Explored
     | Sight
 with
     override this.ToString () =
         match this with
         | Full -> "Full (easy)"
+        | Explored -> "Explored (medium)"
         | Sight -> "Sight (hard)"
 
     member this.Next =
         match this with
-        | Full ->  Sight
+        | Full ->  Explored
+        | Explored -> Sight
         | Sight -> Full
 
-    member this.Prev = this.Next
+    member this.Prev = this.Next.Next
 
 type Config = {
     Width: int
@@ -29,7 +32,7 @@ with
     static member Default = {
         Width = 32
         Height = 16
-        Visibility = Full
+        Visibility = Explored
     }
 
 type Menu = {
@@ -52,6 +55,7 @@ type RoomWall = N | W
 type Game = {
     Config: Config
     Rooms: Room array
+    VisibleRooms: int Set
     Start: int
     Finish: int
     Player: int
