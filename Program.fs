@@ -6,6 +6,10 @@ let move state dir =
     | Game g -> Game (Game.move g dir)
 
 let updateScreen (state: State) =
+    Console.ForegroundColor <-
+        match state with
+        | Game g when g.Won -> ConsoleColor.Green
+        | _ -> ConsoleColor.White
     let lines =
         match state with
         | Menu m -> Menu.render m
