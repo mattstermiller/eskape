@@ -37,10 +37,15 @@ let main args =
     while run do
         let key = Console.ReadKey().Key
         eraseCursor ()
+        let won =
+            match state with
+            | Game g when g.Won -> true
+            | _ -> false
         let newState =
             match key with
             | ConsoleKey.Escape when state.IsInMenu -> run <- false; state
             | ConsoleKey.Escape -> Menu { Config = state.Config; Cursor = 0 }
+            | ConsoleKey.N when won -> Game (Game.newGame state.Config)
             | ConsoleKey.LeftArrow | ConsoleKey.H -> move state Left
             | ConsoleKey.DownArrow | ConsoleKey.J -> move state Down
             | ConsoleKey.UpArrow | ConsoleKey.K -> move state Up

@@ -137,6 +137,7 @@ let render game =
             ""
             if game.Won then
                 "You Won!!!" 
+                "N for new game."
             else
                 "Use Arrows or H J K L to move."
             "Esc for Menu."
