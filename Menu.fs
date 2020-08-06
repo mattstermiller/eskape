@@ -11,8 +11,10 @@ let private cursor menu offset =
 
 let updateScreenSize (config: Config) =
     try
-        if (Console.WindowWidth, Console.WindowHeight) <> (config.ScreenWidth, config.ScreenHeight) then
-            Console.SetWindowSize(config.ScreenWidth, config.ScreenHeight)
+        let winWidth = config.ScreenWidth + 1
+        let winHeight = config.ScreenHeight + 1
+        if (Console.WindowWidth, Console.WindowHeight) <> (winWidth, winHeight) then
+            Console.SetWindowSize(winWidth, winHeight)
         true
     with _ ->
         false

@@ -26,8 +26,8 @@ type Config = {
     Visibility: Visibility
 }
 with
-    member this.ScreenWidth = this.Width*2 + 2
-    member this.ScreenHeight = this.Height*2 + 2
+    member this.ScreenWidth = this.Width*2 + 1
+    member this.ScreenHeight = this.Height*2 + 1
 
     static member Default = {
         Width = 32
@@ -55,7 +55,9 @@ type RoomWall = N | W
 type Game = {
     Config: Config
     Rooms: Room array
-    VisibleRooms: int Set
+    RenderedMaze: char array array
+    /// Set of visible screen coordinates
+    VisibleCoords: (int * int) Set
     Start: int
     Finish: int
     Player: int

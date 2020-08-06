@@ -14,10 +14,10 @@ let shuffle items =
 
 let clamp (minVal, maxVal) value = value |> max minVal |> min maxVal
 
-module Seq =
+module Array =
     let collecti f =
         let mutable i = 0
-        Seq.collect (fun a ->
+        Array.collect (fun a ->
             let b = f i a
             i <- i + 1
             b

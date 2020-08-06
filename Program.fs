@@ -15,7 +15,7 @@ let updateScreen (state: State) =
         | Menu m -> Menu.render m
         | Game g -> Game.render g
         |> Seq.toList
-    lines @ List.init (state.Config.ScreenHeight - lines.Length) (fun _ -> "")
+    lines @ List.init (state.Config.ScreenHeight + 1 - lines.Length) (fun _ -> "")
     |> Seq.map (fun line -> line.PadRight state.Config.ScreenWidth)
     |> Seq.iter Console.WriteLine
     Console.SetCursorPosition(0, 0)
