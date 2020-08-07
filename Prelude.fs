@@ -12,7 +12,7 @@ let shuffle items =
         arr.[i] <- swap
     arr
 
-let clamp (minVal, maxVal) value = value |> max minVal |> min maxVal
+let clamp (minVal, maxVal) value = value |> min maxVal |> max minVal
 
 module Array =
     let collecti f =

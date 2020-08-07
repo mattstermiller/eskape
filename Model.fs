@@ -21,17 +21,17 @@ with
     member this.Prev = this.Next.Next
 
 type Config = {
-    Width: int
-    Height: int
+    RoomWidth: int
+    RoomHeight: int
     Visibility: Visibility
 }
 with
-    member this.ScreenWidth = this.Width*2 + 1
-    member this.ScreenHeight = this.Height*2 + 1
+    member this.CharWidth = this.RoomWidth*2 + 1
+    member this.CharHeight = this.RoomHeight*2 + 1
 
     static member Default = {
-        Width = 32
-        Height = 16
+        RoomWidth = 32
+        RoomHeight = 16
         Visibility = Explored
     }
 
@@ -56,15 +56,16 @@ type Game = {
     Config: Config
     Rooms: Room array
     RenderedMaze: char array array
-    /// Set of visible screen coordinates
+    /// Set of visible char coordinates
     VisibleCoords: (int * int) Set
+    ViewPos: int * int
     Start: int
     Finish: int
     Player: int
 }
 with
-    member this.Width = this.Config.Width
-    member this.Height = this.Config.Height
+    member this.Width = this.Config.RoomWidth
+    member this.Height = this.Config.RoomHeight
     member this.Won = this.Player = this.Finish
 
 

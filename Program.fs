@@ -1,11 +1,11 @@
 ﻿open System
 
-let move state dir =
+let move viewSize state dir =
     match state with
-    | Menu m -> Menu.move m dir
-    | Game g -> Game (Game.move g dir)
+    | Menu m -> Menu.move viewSize dir m
+    | Game g -> Game (Game.move viewSize dir g)
 
-let updateScreen (state: State) =
+let updateScreen viewSize (state: State) =
     Console.ForegroundColor <-
         match state with
         | Game g when g.Won -> ConsoleColor.Green
@@ -13,11 +13,10 @@ let updateScreen (state: State) =
     let lines =
         match state with
         | Menu m -> Menu.render m
-        | Game g -> Game.render g
+        | Game g -> Game.render viewSize g
         |> Seq.toList
-    lines @ List.init (state.Config.ScreenHeight + 1 - lines.Length) (fun _ -> "")
-    |> Seq.map (fun line -> line.PadRight state.Config.ScreenWidth)
-    |> Seq.iter Console.WriteLine
+    Console.Clear()
+    lines |> Seq.iter Console.WriteLine
     Console.SetCursorPosition(0, 0)
 
 let eraseCursor () =
@@ -30,13 +29,16 @@ let main args =
     Console.Title <- "Eskape"
     Console.CursorVisible <- false
     let mutable state = Menu { Config = Config.Default; Cursor = 0 }
-    Menu.updateScreenSize state.Config |> ignore
 
-    updateScreen state
+    // we want render slightly less than window size to account for scrollbars and avoid rendering to full buffer width
+    let getViewSize () = (Console.WindowWidth-1, Console.WindowHeight-1)
+
+    updateScreen (getViewSize ()) state
     let mutable run = true
     while run do
         let key = Console.ReadKey().Key
         eraseCursor ()
+        let viewSize = getViewSize ()
         let won =
             match state with
             | Game g when g.Won -> true
@@ -45,13 +47,13 @@ let main args =
             match key with
             | ConsoleKey.Escape when state.IsInMenu -> run <- false; state
             | ConsoleKey.Escape -> Menu { Config = state.Config; Cursor = 0 }
-            | ConsoleKey.N when won -> Game (Game.newGame state.Config)
-            | ConsoleKey.LeftArrow | ConsoleKey.H -> move state Left
-            | ConsoleKey.DownArrow | ConsoleKey.J -> move state Down
-            | ConsoleKey.UpArrow | ConsoleKey.K -> move state Up
-            | ConsoleKey.RightArrow | ConsoleKey.L -> move state Right
+            | ConsoleKey.N when won -> Game (Game.newGame viewSize state.Config)
+            | ConsoleKey.LeftArrow | ConsoleKey.H -> move viewSize state Left
+            | ConsoleKey.DownArrow | ConsoleKey.J -> move viewSize state Down
+            | ConsoleKey.UpArrow | ConsoleKey.K -> move viewSize state Up
+            | ConsoleKey.RightArrow | ConsoleKey.L -> move viewSize state Right
             | _ -> state
         if newState <> state then
             state <- newState
-            updateScreen state
+            updateScreen viewSize state
     0

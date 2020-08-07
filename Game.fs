@@ -27,13 +27,13 @@ let private canMove game room dir =
         | Right -> not game.Rooms.[room+1].W
     else false
 
-let toScreenCoord (config: Config) room =
-    (room%config.Width*2 + 1, room/config.Width*2 + 1)
+let toCharCoord (config: Config) room =
+    (room%config.RoomWidth*2 + 1, room/config.RoomWidth*2 + 1)
 
-let toAreaScreenCoords config room =
-    let x, y = toScreenCoord config room
-    let minX, maxX = max (x-1) 0, min (x+1) (config.ScreenWidth-1)
-    let minY, maxY = max (y-1) 0, min (y+1) (config.ScreenHeight-1)
+let toAreaCharCoords config room =
+    let x, y = toCharCoord config room
+    let minX, maxX = max (x-1) 0, min (x+1) (config.CharWidth-1)
+    let minY, maxY = max (y-1) 0, min (y+1) (config.CharHeight-1)
     [minY..maxY] |> List.collect (fun y -> [minX..maxX] |> List.map (fun x -> (x, y)))
 
 let private updateVisibleCoords game =
@@ -51,7 +51,7 @@ let private updateVisibleCoords game =
             yield! tracePlayer Left
             yield! tracePlayer Right
         ]
-        visibleRooms |> List.collect (toAreaScreenCoords game.Config) |> set
+        visibleRooms |> List.collect (toAreaCharCoords game.Config) |> set
     )
     match game.Config.Visibility with
     | Full -> game
@@ -90,8 +90,14 @@ let renderMaze game =
         |])
     { game with RenderedMaze = maze }
 
-let newGame config =
-    let (width, height) = (config.Width, config.Height)
+let private getViewCenteredOn (config: Config) viewSize (x, y) =
+    let viewWidth, viewHeight = viewSize
+    let viewLeft = x - viewWidth/2 |> clamp (0, max 0 (config.CharWidth - viewWidth))
+    let viewTop = y - viewHeight/2 |> clamp (0, max 0 (config.CharHeight - viewHeight))
+    (viewLeft, viewTop)
+
+let newGame viewSize config =
+    let (width, height) = (config.RoomWidth, config.RoomHeight)
     let rooms = Array.init (width*height) (fun _ -> { N = true; W = true })
     let wallsToRemove = [|
         for room in Seq.init (width*height) id do
@@ -113,11 +119,13 @@ let newGame config =
                 | W -> { rooms.[room] with W = false }
     let start = rand.Next(height)*width
     let finish = rand.Next(height)*width + width - 1
+    let view = getViewCenteredOn config viewSize (toCharCoord config start)
     {
         Config = config
         Rooms = rooms
         RenderedMaze = [||]
         VisibleCoords = Set.empty
+        ViewPos = view
         Start = start
         Finish = finish
         Player = start
@@ -125,23 +133,36 @@ let newGame config =
     |> renderMaze
     |> updateVisibleCoords
 
-let move (game: Game) dir =
+let private updateView viewSize (game: Game) =
+    let minDist = 3
+    let player = toCharCoord game.Config game.Player
+    let center = lazy (getViewCenteredOn game.Config viewSize player)
+    let viewDim f =
+        if f player < f game.ViewPos + minDist - 1 || f player > f game.ViewPos + f viewSize - minDist then f center.Value
+        else f game.ViewPos
+    System.Diagnostics.Debug.WriteLine(sprintf "center  %A" center.Value)
+    System.Diagnostics.Debug.WriteLine(sprintf "view  %i  %i" (viewDim fst) (viewDim snd))
+    { game with ViewPos = (viewDim fst, viewDim snd) }
+
+let move viewSize dir (game: Game) =
     if not game.Won && canMove game game.Player dir then
         { game with Player = nextRoom game.Width game.Player dir }
         |> updateVisibleCoords
+        |> updateView viewSize
     else game
 
-let render game =
+let render (viewWidth, viewHeight) game =
     let unknown = '░'
     let playerChar = '*'
-    let playerCoord = toScreenCoord game.Config game.Player
+    let playerCoord = toCharCoord game.Config game.Player
+    let viewLeft, viewTop = game.ViewPos
     let isVisible coord =
         if game.Config.Visibility = Full || game.Won then true
         else game.VisibleCoords |> Set.contains coord
     let maze =
-        game.RenderedMaze |> Array.mapi (fun rowi row ->
-            row |> Array.mapi (fun coli char ->
-                let coord = coli, rowi
+        game.RenderedMaze |> Array.skip viewTop |> Array.truncate viewHeight |> Array.mapi (fun y row ->
+            row |> Array.skip viewLeft |> Array.truncate viewWidth |> Array.mapi (fun x char ->
+                let coord = x+viewLeft, y+viewTop
                 if coord = playerCoord then playerChar
                 elif isVisible coord then char
                 else unknown
@@ -156,5 +177,5 @@ let render game =
             else
                 "Use Arrows or H J K L to move."
             "Esc for Menu."
-        ] |> fun s -> s.PadRight (game.Config.ScreenWidth)
+        ]
     Seq.append [msg] maze
