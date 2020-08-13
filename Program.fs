@@ -12,11 +12,15 @@ let updateScreen viewSize (state: State) =
         | _ -> ConsoleColor.White
     let lines =
         match state with
-        | Menu m -> Menu.render m
-        | Game g -> Game.render viewSize g
+        | Menu m ->
+            Console.Clear()
+            Menu.render m
+        | Game g ->
+            Game.render viewSize g
         |> Seq.toList
-    Console.Clear()
-    lines |> Seq.iter Console.WriteLine
+    lines
+    |> Seq.map (fun l -> l.PadRight(fst viewSize))
+    |> Seq.iter Console.WriteLine
     Console.SetCursorPosition(0, 0)
 
 let eraseCursor () =
@@ -32,13 +36,16 @@ let main args =
 
     // we want render slightly less than window size to account for scrollbars and avoid rendering to full buffer width
     let getViewSize () = (Console.WindowWidth-1, Console.WindowHeight-1)
+    let mutable viewSize = (0, 0)
 
     updateScreen (getViewSize ()) state
     let mutable run = true
     while run do
         let key = Console.ReadKey().Key
         eraseCursor ()
-        let viewSize = getViewSize ()
+        if viewSize <> getViewSize () then
+            Console.Clear()
+            viewSize <- getViewSize ()
         let won =
             match state with
             | Game g when g.Won -> true

@@ -140,8 +140,6 @@ let private updateView viewSize (game: Game) =
     let viewDim f =
         if f player < f game.ViewPos + minDist - 1 || f player > f game.ViewPos + f viewSize - minDist then f center.Value
         else f game.ViewPos
-    System.Diagnostics.Debug.WriteLine(sprintf "center  %A" center.Value)
-    System.Diagnostics.Debug.WriteLine(sprintf "view  %i  %i" (viewDim fst) (viewDim snd))
     { game with ViewPos = (viewDim fst, viewDim snd) }
 
 let move viewSize dir (game: Game) =
