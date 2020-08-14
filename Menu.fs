@@ -1,6 +1,6 @@
 module Menu
 
-let private options = 4
+let private options = 5
 let private widthLimits = (8, 999)
 let private heightLimits = (4, 999)
 
@@ -21,6 +21,9 @@ let private activate viewSize (menu: Menu) next =
     | 3 ->
         let vis = if next then menu.Config.Visibility.Next else menu.Config.Visibility.Prev
         menuConfig { menu.Config with Visibility = vis }
+    | 4 ->
+        let scroll = if next then menu.Config.ScrollSpeed.Next else menu.Config.ScrollSpeed.Prev
+        menuConfig { menu.Config with ScrollSpeed = scroll }
     | _ ->
         Menu menu
 
@@ -42,4 +45,5 @@ let render menu =
         cursor 1 + " Maze Width:  " + string menu.Config.RoomWidth
         cursor 2 + " Maze Height: " + string menu.Config.RoomHeight
         cursor 3 + " Maze Visibility: " + string menu.Config.Visibility
+        cursor 4 + " View Scroll Speed: " + string menu.Config.ScrollSpeed
     }

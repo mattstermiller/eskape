@@ -12,18 +12,33 @@ with
         | Explored -> "Explored (medium)"
         | Sight -> "Sight (hard)"
 
-    member this.Next =
-        match this with
-        | Full ->  Explored
-        | Explored -> Sight
-        | Sight -> Full
+    member this.Next = nextUnionCase this
+    member this.Prev = prevUnionCase this
 
-    member this.Prev = this.Next.Next
+type ScrollSpeed =
+    | Slowest
+    | Slow
+    | Medium
+    | Fast
+    | Fastest
+with
+    // override this.ToString () = sprintf "%A" this
+    member this.Next = nextUnionCase this
+    member this.Prev = prevUnionCase this
+
+    member this.Delay =
+        match this with
+        | Slowest -> 60
+        | Slow -> 45
+        | Medium -> 30
+        | Fast -> 15
+        | Fastest -> 0
 
 type Config = {
     RoomWidth: int
     RoomHeight: int
     Visibility: Visibility
+    ScrollSpeed: ScrollSpeed
 }
 with
     member this.CharWidth = this.RoomWidth*2 + 1
@@ -33,6 +48,7 @@ with
         RoomWidth = 32
         RoomHeight = 16
         Visibility = Explored
+        ScrollSpeed = Medium
     }
 
 type Menu = {
@@ -59,6 +75,7 @@ type Game = {
     /// Set of visible char coordinates
     VisibleCoords: (int * int) Set
     ViewPos: int * int
+    PendingViewPos: int * int
     Start: int
     Finish: int
     Player: int

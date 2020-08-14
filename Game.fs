@@ -126,6 +126,7 @@ let newGame viewSize config =
         RenderedMaze = [||]
         VisibleCoords = Set.empty
         ViewPos = view
+        PendingViewPos = view
         Start = start
         Finish = finish
         Player = start
@@ -140,7 +141,7 @@ let private updateView viewSize (game: Game) =
     let viewDim f =
         if f player < f game.ViewPos + minDist - 1 || f player > f game.ViewPos + f viewSize - minDist then f center.Value
         else f game.ViewPos
-    { game with ViewPos = (viewDim fst, viewDim snd) }
+    { game with PendingViewPos = (viewDim fst, viewDim snd) }
 
 let move viewSize dir (game: Game) =
     if not game.Won && canMove game game.Player dir then

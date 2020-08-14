@@ -1,8 +1,6 @@
 ﻿open System
 open System.Threading
 
-let scrollDelay = 25
-
 let move viewSize state dir =
     match state with
     | Menu m -> Menu.move viewSize dir m
@@ -27,7 +25,7 @@ let rec updateScreen viewSize (state: State) =
     Console.SetCursorPosition(0, 0)
     match state with
     | Game game when game.PendingViewPos <> game.ViewPos ->
-        Thread.Sleep scrollDelay
+        Thread.Sleep game.Config.ScrollSpeed.Delay
         let newDim (f: int*int -> int) =
             f game.ViewPos + (f game.PendingViewPos).CompareTo(f game.ViewPos)
         updateScreen viewSize (Game { game with ViewPos = (newDim fst, newDim snd) })

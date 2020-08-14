@@ -42,3 +42,18 @@ type UnionFindNode() =
                 if root1.Rank = root2.Rank then
                     root1.Rank <- root1.Rank + 1
             true
+
+open FSharp.Reflection
+
+let private unionCases<'a> () =
+    FSharpType.GetUnionCases(typeof<'a>)
+    |> Array.map (fun c -> FSharpValue.MakeUnion(c, [||]) :?> 'a)
+
+let private moveUnionCase offset (value: 'a) =
+    let cases = unionCases<'a> ()
+    let i = cases |> Array.findIndex ((=) value)
+    let newI = i+offset |> clamp (0, cases.Length-1)
+    cases.[newI]
+
+let nextUnionCase value = moveUnionCase 1 value
+let prevUnionCase value = moveUnionCase -1 value
