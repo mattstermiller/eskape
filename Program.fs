@@ -1,11 +1,14 @@
 ﻿open System
+open System.Threading
+
+let scrollDelay = 25
 
 let move viewSize state dir =
     match state with
     | Menu m -> Menu.move viewSize dir m
     | Game g -> Game (Game.move viewSize dir g)
 
-let updateScreen viewSize (state: State) =
+let rec updateScreen viewSize (state: State) =
     Console.ForegroundColor <-
         match state with
         | Game g when g.Won -> ConsoleColor.Green
@@ -22,6 +25,13 @@ let updateScreen viewSize (state: State) =
     |> Seq.map (fun l -> l.PadRight(fst viewSize))
     |> Seq.iter Console.WriteLine
     Console.SetCursorPosition(0, 0)
+    match state with
+    | Game game when game.PendingViewPos <> game.ViewPos ->
+        Thread.Sleep scrollDelay
+        let newDim (f: int*int -> int) =
+            f game.ViewPos + (f game.PendingViewPos).CompareTo(f game.ViewPos)
+        updateScreen viewSize (Game { game with ViewPos = (newDim fst, newDim snd) })
+    | _ -> state
 
 let eraseCursor () =
     Console.CursorLeft <- max 0 (Console.CursorLeft - 1)
@@ -38,7 +48,7 @@ let main args =
     let getViewSize () = (Console.WindowWidth-1, Console.WindowHeight-1)
     let mutable viewSize = (0, 0)
 
-    updateScreen (getViewSize ()) state
+    state <- updateScreen (getViewSize ()) state
     let mutable run = true
     while run do
         let key = Console.ReadKey().Key
@@ -61,6 +71,5 @@ let main args =
             | ConsoleKey.RightArrow | ConsoleKey.L -> move viewSize state Right
             | _ -> state
         if newState <> state then
-            state <- newState
-            updateScreen viewSize state
+            state <- updateScreen viewSize newState
     0
