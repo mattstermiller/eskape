@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Compile Include="Prelude.fs" />
+    <Compile Include="Serialization.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Game.fs" />
     <Compile Include="Menu.fs" />

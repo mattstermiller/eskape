@@ -1,7 +1,9 @@
 [<AutoOpen>]
 module Prelude
 
-let rand = System.Random()
+open System
+
+let rand = Random()
 
 let shuffle items =
     let arr = items |> Seq.toArray
@@ -13,6 +15,10 @@ let shuffle items =
     arr
 
 let clamp (minVal, maxVal) value = value |> min maxVal |> max minVal
+
+module String =
+    let equalsIgnoreCase (a: string) b =
+        a.Equals(b, StringComparison.CurrentCultureIgnoreCase)
 
 module Array =
     let collecti f =

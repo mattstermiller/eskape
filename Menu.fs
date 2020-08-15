@@ -11,6 +11,7 @@ let private activate viewSize (menu: Menu) next =
     let menuConfig config = Menu { menu with Config = config }
     match menu.Cursor with
     | 0 ->
+        saveConfig menu.Config
         Game (Game.newGame viewSize menu.Config)
     | 1 ->
         let width = menu.Config.RoomWidth + (if next then 1 else -1) |> clamp widthLimits

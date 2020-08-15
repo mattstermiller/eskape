@@ -22,7 +22,6 @@ type ScrollSpeed =
     | Fast
     | Fastest
 with
-    // override this.ToString () = sprintf "%A" this
     member this.Next = nextUnionCase this
     member this.Prev = prevUnionCase this
 
@@ -97,3 +96,9 @@ with
         match this with
         | Menu m -> m.Config
         | Game g -> g.Config
+
+open Serialization
+
+let private configFilePath = System.IO.Path.Join(appDataDirectory, "Eskape", "settings.txt")
+let loadConfig () = readFile configFilePath Config.Default
+let saveConfig (config: Config) = writeFile configFilePath config

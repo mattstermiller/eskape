@@ -40,7 +40,7 @@ let eraseCursor () =
 let main args =
     Console.Title <- "Eskape"
     Console.CursorVisible <- false
-    let mutable state = Menu { Config = Config.Default; Cursor = 0 }
+    let mutable state = Menu { Config = loadConfig (); Cursor = 0 }
 
     // we want render slightly less than window size to account for scrollbars and avoid rendering to full buffer width
     let getViewSize () = (Console.WindowWidth-1, Console.WindowHeight-1)
