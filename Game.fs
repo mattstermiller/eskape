@@ -58,6 +58,25 @@ let private updateVisibleCoords game =
     | Explored -> { game with VisibleCoords = Set.union game.VisibleCoords visibleCoords.Value }
     | Sight -> { game with VisibleCoords = visibleCoords.Value }
 
+let private renderWalls (maze: char array array) =
+    let space = ' '
+    let walls =
+        " ─│┌" +
+        "──┐┬" +
+        "│└│├" +
+        "┘┴┤┼"
+    maze |> Array.mapi (fun y row ->
+        row |> Array.mapi (fun x c ->
+            if c = space then c
+            else
+                let e = if x < row.Length-1 && maze.[y].[x+1] <> space then 1 else 0
+                let s = if y < maze.Length-1 && maze.[y+1].[x] <> space then 2 else 0
+                let w = if x > 0 && maze.[y].[x-1] <> space then 4 else 0
+                let n = if y > 0 && maze.[y-1].[x] <> space then 8 else 0
+                walls.[n+e+s+w]
+        )
+    )
+
 let renderMaze game =
     let wall = '█'
     let space = ' '
@@ -88,7 +107,7 @@ let renderMaze game =
                         wall
                 |])
         |])
-    { game with RenderedMaze = maze }
+    { game with RenderedMaze = renderWalls maze }
 
 let private getViewCenteredOn (config: Config) viewSize (x, y) =
     let viewWidth, viewHeight = viewSize
@@ -171,7 +190,7 @@ let render (viewWidth, viewHeight) game =
         String.concat "  " [
             ""
             if game.Won then
-                "You Won!!!" 
+                "You Won!!!"
                 "N for new game."
             else
                 "Use Arrows or H J K L to move."
