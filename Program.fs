@@ -34,7 +34,7 @@ let rec updateScreen viewSize (state: State) =
 let eraseCursor () =
     Console.CursorLeft <- max 0 (Console.CursorLeft - 1)
     Console.Write " "
-    Console.CursorLeft <- Console.CursorLeft - 1
+    Console.CursorLeft <- max 0 (Console.CursorLeft - 1)
 
 [<EntryPoint>]
 let main args =
