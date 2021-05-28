@@ -14,7 +14,6 @@ let rec updateScreen viewSize (state: State) =
     let lines =
         match state with
         | Menu m ->
-            Console.Clear()
             Menu.render m
         | Game g ->
             Game.render viewSize g
@@ -69,5 +68,8 @@ let main args =
             | ConsoleKey.RightArrow | ConsoleKey.L -> move viewSize state Right
             | _ -> state
         if newState <> state then
+            match newState, state with
+            | Menu _, Game _ -> Console.Clear()
+            | _ -> ()
             state <- updateScreen viewSize newState
     0
